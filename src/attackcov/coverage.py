@@ -49,3 +49,15 @@ def coverage_score(detections: List[Detection]) -> float:
     total = len(all_techniques())
     covered = sum(1 for tid in all_techniques() if counts.get(tid, 0) > 0)
     return round(100 * covered / total, 1) if total else 0.0
+
+
+def unknown_techniques(detections: List[Detection]) -> List[str]:
+    """Referenced technique IDs that aren't in the matrix — catches typos and
+    techniques outside the configured scope."""
+    valid = set(all_techniques())
+    out: Set[str] = set()
+    for d in detections:
+        for tid in d.techniques:
+            if tid.split(".")[0] not in valid:
+                out.add(tid)
+    return sorted(out)

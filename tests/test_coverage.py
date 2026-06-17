@@ -1,5 +1,6 @@
 from attackcov import (Detection, map_detections, coverage_by_tactic, gaps,
-                       coverage_score, render_svg)
+                       coverage_score, unknown_techniques, render_svg, navigator_layer)
+from attackcov.cli import main
 
 
 DETS = [
@@ -40,3 +41,43 @@ def test_render_svg():
     svg = render_svg(DETS)
     assert svg.startswith("<svg") and svg.endswith("</svg>")
     assert "T1110" in svg and "<title>" in svg
+
+
+def test_unknown_techniques():
+    assert unknown_techniques(DETS) == ["T9999"]      # the invalid one is surfaced
+    assert unknown_techniques([Detection("ok", ["T1110"])]) == []
+
+
+def test_navigator_layer():
+    layer = navigator_layer(DETS, name="My Coverage")
+    assert layer["name"] == "My Coverage"
+    assert layer["domain"] == "enterprise-attack"
+    by_id = {t["techniqueID"]: t for t in layer["techniques"]}
+    assert by_id["T1110"]["score"] == 1               # covered
+    assert by_id["T1041"]["score"] == 0               # gap (exfil)
+    assert "T9999" not in by_id                        # invalid IDs aren't in the matrix
+    assert layer["gradient"]["maxValue"] >= 1
+
+
+def test_cli_report_and_min_score(tmp_path, capsys):
+    import json
+    f = tmp_path / "dets.json"
+    f.write_text(json.dumps([
+        {"name": "Brute force", "techniques": ["T1110"]},
+        {"name": "PS", "techniques": ["T1059.001"]},
+        {"name": "typo", "techniques": ["T9999"]},
+    ]))
+    code = main([str(f), "--min-score", "90"])         # coverage is far below 90%
+    out = capsys.readouterr().out
+    assert code == 1
+    assert "ATT&CK coverage:" in out
+    assert "Unknown technique IDs" in out and "T9999" in out
+
+
+def test_cli_navigator_output(tmp_path, capsys):
+    import json
+    f = tmp_path / "dets.json"
+    f.write_text(json.dumps({"detections": [{"name": "x", "techniques": ["T1110"]}]}))
+    assert main([str(f), "--navigator"]) == 0
+    layer = json.loads(capsys.readouterr().out)
+    assert layer["versions"]["layer"] == "4.5"
