@@ -61,3 +61,18 @@ def unknown_techniques(detections: List[Detection]) -> List[str]:
             if tid.split(".")[0] not in valid:
                 out.add(tid)
     return sorted(out)
+
+
+def single_point_techniques(detections: List[Detection]) -> List[str]:
+    """Techniques covered by exactly one detection — fragile coverage: if that
+    rule breaks or is disabled, the technique goes dark. The first place to add
+    redundancy."""
+    return sorted(tid for tid, n in map_detections(detections).items() if n == 1)
+
+
+def unmapped_detections(detections: List[Detection]) -> List[str]:
+    """Names of detections that map to no known technique (all IDs empty or
+    invalid) — they add no coverage and are usually a typo or dead rule."""
+    valid = set(all_techniques())
+    return [d.name for d in detections
+            if not any(tid.split(".")[0] in valid for tid in d.techniques)]

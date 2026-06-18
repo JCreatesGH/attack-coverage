@@ -1,5 +1,6 @@
 from attackcov import (Detection, map_detections, coverage_by_tactic, gaps,
-                       coverage_score, unknown_techniques, render_svg, navigator_layer)
+                       coverage_score, unknown_techniques, single_point_techniques,
+                       unmapped_detections, render_svg, navigator_layer)
 from attackcov.cli import main
 
 
@@ -48,6 +49,20 @@ def test_unknown_techniques():
     assert unknown_techniques([Detection("ok", ["T1110"])]) == []
 
 
+def test_single_point_techniques():
+    # every covered technique in DETS has exactly one detection -> all fragile
+    assert single_point_techniques(DETS) == ["T1059", "T1110", "T1204", "T1566"]
+    # add a second detection for T1110 -> no longer single-point
+    dets = DETS + [Detection("Another brute force rule", ["T1110"])]
+    assert "T1110" not in single_point_techniques(dets)
+
+
+def test_unmapped_detections():
+    assert unmapped_detections(DETS) == ["Junk"]              # only T9999
+    assert unmapped_detections([Detection("ok", ["T1110"])]) == []
+    assert unmapped_detections([Detection("empty", [])]) == ["empty"]
+
+
 def test_navigator_layer():
     layer = navigator_layer(DETS, name="My Coverage")
     assert layer["name"] == "My Coverage"
@@ -81,3 +96,18 @@ def test_cli_navigator_output(tmp_path, capsys):
     assert main([str(f), "--navigator"]) == 0
     layer = json.loads(capsys.readouterr().out)
     assert layer["versions"]["layer"] == "4.5"
+
+
+def test_cli_json_output(tmp_path, capsys):
+    import json
+    f = tmp_path / "dets.json"
+    f.write_text(json.dumps([
+        {"name": "Brute force", "techniques": ["T1110"]},
+        {"name": "typo", "techniques": ["T9999"]},
+    ]))
+    assert main([str(f), "--json"]) == 0
+    rep = json.loads(capsys.readouterr().out)
+    assert "coverage_score" in rep
+    assert rep["single_point_techniques"] == ["T1110"]
+    assert rep["unmapped_detections"] == ["typo"]
+    assert rep["unknown_techniques"] == ["T9999"]

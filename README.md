@@ -42,11 +42,19 @@ Installing the package adds an `attackcov` command. Feed it a JSON list of detec
 (`[{name, techniques:[...]}]`):
 
 ```bash
-$ attackcov detections.json                            # coverage %, per-tactic table, gaps
+$ attackcov detections.json                            # coverage %, per-tactic table, gaps, fragile/dead rules
+$ attackcov detections.json --json                     # the full report as JSON
 $ attackcov detections.json --navigator > layer.json   # MITRE ATT&CK Navigator layer
 $ attackcov detections.json --svg > coverage.svg       # heatmap
 $ attackcov detections.json --min-score 60             # exit 1 if coverage < 60% (CI gate)
 ```
+
+## Beyond a coverage %
+
+A green-enough score can still hide brittle coverage. `attackcov` also flags:
+
+- **Fragile coverage** — `single_point_techniques()`: techniques covered by exactly *one* detection. If that rule breaks or is disabled, the technique goes dark — the first place to add redundancy.
+- **Dead rules** — `unmapped_detections()`: detections whose technique IDs are all empty or unknown, so they add no coverage (usually a typo).
 
 ## Notes
 
@@ -58,7 +66,7 @@ $ attackcov detections.json --min-score 60             # exit 1 if coverage < 60
 ## Development
 
 ```bash
-pip install -e .[dev] && python -m pytest -q   # 9 tests
+pip install -e .[dev] && python -m pytest -q   # 12 tests
 ```
 
 ## License
