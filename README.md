@@ -46,6 +46,7 @@ $ attackcov detections.json                            # coverage %, per-tactic 
 $ attackcov detections.json --json                     # the full report as JSON
 $ attackcov detections.json --navigator > layer.json   # MITRE ATT&CK Navigator layer
 $ attackcov detections.json --svg > coverage.svg       # heatmap
+$ attackcov detections.json --threat ransomware        # coverage vs a specific threat's TTPs
 $ attackcov detections.json --min-score 60             # exit 1 if coverage < 60% (CI gate)
 ```
 
@@ -55,6 +56,33 @@ A green-enough score can still hide brittle coverage. `attackcov` also flags:
 
 - **Fragile coverage** — `single_point_techniques()`: techniques covered by exactly *one* detection. If that rule breaks or is disabled, the technique goes dark — the first place to add redundancy.
 - **Dead rules** — `unmapped_detections()`: detections whose technique IDs are all empty or unknown, so they add no coverage (usually a typo).
+
+## Are we covered against *this* attacker?
+
+An overall percentage hides whether you can stop the threats that actually matter to you.
+`threat_coverage()` scores your detections against a specific adversary's technique set:
+
+```python
+from attackcov import threat_coverage, THREAT_PROFILES
+
+threat_coverage(detections, THREAT_PROFILES["ransomware"])
+# {"total": 7, "covered": ["T1059", "T1566"], "uncovered": ["T1003", "T1021", ...], "pct": 28.6}
+```
+
+On the CLI, `--threat` takes a built-in profile (`ransomware`, `phishing-to-c2`,
+`valid-account-abuse`) or a JSON file of technique IDs from your own threat intel, and pairs
+with `--min-score` to **gate CI on the threats you care about**:
+
+```bash
+$ attackcov detections.json --threat ransomware
+Threat coverage (ransomware): 42.9%  (3/7 techniques)
+  Uncovered: T1021 Remote Services, T1041 Exfil Over C2, ...
+$ attackcov detections.json --threat apt-ttps.json --min-score 80   # exit 1 if under 80%
+```
+
+The built-in profiles are illustrative kill-chains built from in-matrix techniques — starting
+points, not authoritative MITRE group mappings; supply your own CTI-derived list for real
+assessments.
 
 ## Notes
 
@@ -66,7 +94,7 @@ A green-enough score can still hide brittle coverage. `attackcov` also flags:
 ## Development
 
 ```bash
-pip install -e .[dev] && python -m pytest -q   # 12 tests
+pip install -e .[dev] && python -m pytest -q   # 18 tests
 ```
 
 ## License

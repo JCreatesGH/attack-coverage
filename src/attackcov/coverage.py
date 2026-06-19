@@ -76,3 +76,31 @@ def unmapped_detections(detections: List[Detection]) -> List[str]:
     valid = set(all_techniques())
     return [d.name for d in detections
             if not any(tid.split(".")[0] in valid for tid in d.techniques)]
+
+
+# Illustrative kill-chain technique sets (in-matrix IDs only). These are starting
+# points for "are we covered against THIS?", NOT authoritative MITRE group mappings —
+# pass your own CTI-derived technique list for a real adversary assessment.
+THREAT_PROFILES: Dict[str, List[str]] = {
+    "ransomware": ["T1566", "T1059", "T1547", "T1003", "T1021", "T1562", "T1041"],
+    "phishing-to-c2": ["T1566", "T1204", "T1059", "T1547", "T1041"],
+    "valid-account-abuse": ["T1078", "T1098", "T1021", "T1567"],
+}
+
+
+def threat_coverage(detections: List[Detection], threat_techniques: List[str]) -> Dict[str, object]:
+    """Coverage against a specific adversary/threat's technique set — the actionable
+    question "can we detect THIS attacker?". Sub-techniques collapse to their base;
+    duplicates are de-duped in first-seen order. Returns covered / uncovered / pct."""
+    counts = map_detections(detections)
+    bases: List[str] = []
+    seen: Set[str] = set()
+    for tid in threat_techniques:
+        b = str(tid).split(".")[0]
+        if b not in seen:
+            seen.add(b)
+            bases.append(b)
+    covered = sorted(b for b in bases if counts.get(b, 0) > 0)
+    uncovered = sorted(b for b in bases if counts.get(b, 0) == 0)
+    pct = round(100 * len(covered) / len(bases), 1) if bases else 0.0
+    return {"total": len(bases), "covered": covered, "uncovered": uncovered, "pct": pct}

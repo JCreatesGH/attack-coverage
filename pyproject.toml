@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "attackcov"
-version = "0.2.0"
-description = "Map detections to MITRE ATT&CK techniques; chart coverage gaps, fragile single-detection techniques, and dead rules."
+version = "0.3.0"
+description = "Map detections to MITRE ATT&CK techniques; chart coverage gaps, fragile single-detection techniques, dead rules, and per-threat coverage."
 readme = "README.md"
 authors = [{ name = "Joshua John", email = "josh202@gmail.com" }]
 requires-python = ">=3.8"
